@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { STANDINGS_API, fetchJson } from "../api.js";
+import { STANDINGS_API, IDLE_REFRESH_MS, fetchJson } from "../api.js";
 import { Skeletons } from "./Shared.jsx";
 
 function GroupTable({ group }) {
@@ -61,16 +61,31 @@ export default function StandingsTab({ league }) {
 
   useEffect(() => {
     let cancelled = false;
-    const season = (league && league.season && league.season.year) || new Date().getFullYear();
-    fetchJson(`${STANDINGS_API}?season=${season}`)
-      .then(d => {
-        if (!cancelled) setGroups(d.children || []);
-      })
-      .catch(e => {
-        if (!cancelled) setError(e.message);
-      });
+    let timer = null;
+
+    async function load() {
+      const season = (league && league.season && league.season.year) || new Date().getFullYear();
+      try {
+        const d = await fetchJson(`${STANDINGS_API}?season=${season}`);
+        if (!cancelled) {
+          setGroups(d.children || []);
+          setError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.message);
+        }
+      }
+      if (!cancelled) {
+        timer = setTimeout(load, IDLE_REFRESH_MS);
+      }
+    }
+
+    load();
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [league]);
 

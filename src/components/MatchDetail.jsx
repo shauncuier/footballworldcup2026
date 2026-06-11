@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { API, DETAIL_REFRESH_MS, fetchJson } from "../api.js";
+import { API, DETAIL_REFRESH_MS, IDLE_REFRESH_MS, fetchJson } from "../api.js";
 
 const STAT_LABELS = [
   ["possessionPct", "Possession %"],
@@ -204,7 +204,10 @@ export default function MatchDetail({ eventId, live }) {
       } catch (e) {
         if (!cancelled) setError(e.message);
       }
-      if (!cancelled && live) timer = setTimeout(go, DETAIL_REFRESH_MS);
+      if (!cancelled) {
+        const nextPoll = live ? DETAIL_REFRESH_MS : IDLE_REFRESH_MS;
+        timer = setTimeout(go, nextPoll);
+      }
     }
     go();
     return () => {

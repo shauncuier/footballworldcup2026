@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { API, fetchJson } from "../api.js";
+import { API, IDLE_REFRESH_MS, fetchJson } from "../api.js";
 import { Skeletons } from "./Shared.jsx";
 
 export default function NewsTab() {
@@ -8,15 +8,30 @@ export default function NewsTab() {
 
   useEffect(() => {
     let cancelled = false;
-    fetchJson(`${API}/news`)
-      .then(d => {
-        if (!cancelled) setArticles(d.articles || []);
-      })
-      .catch(e => {
-        if (!cancelled) setError(e.message);
-      });
+    let timer = null;
+
+    async function load() {
+      try {
+        const d = await fetchJson(`${API}/news`);
+        if (!cancelled) {
+          setArticles(d.articles || []);
+          setError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setError(e.message);
+        }
+      }
+      if (!cancelled) {
+        timer = setTimeout(load, IDLE_REFRESH_MS);
+      }
+    }
+
+    load();
+
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, []);
 

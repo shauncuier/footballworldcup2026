@@ -59,9 +59,15 @@ export default function App() {
         </button>
       </div>
       <main>
-        {tab === "matches" && <MatchesTab league={league} onMeta={onMeta} />}
-        {tab === "groups" && <StandingsTab league={league} />}
-        {tab === "news" && <NewsTab />}
+        <div style={{ display: tab === "matches" ? "block" : "none" }}>
+          <MatchesTab league={league} onMeta={onMeta} />
+        </div>
+        <div style={{ display: tab === "groups" ? "block" : "none" }}>
+          <StandingsTab league={league} />
+        </div>
+        <div style={{ display: tab === "news" ? "block" : "none" }}>
+          <NewsTab />
+        </div>
       </main>
     </>
   );
