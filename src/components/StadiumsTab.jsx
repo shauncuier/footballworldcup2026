@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { fetchAllStadiums, fetchAllGames } from "../api.js";
+import { fetchAllStadiums, fetchAllGames, stadiumCoords, fetchCurrentWeather, weatherInfo } from "../api.js";
 
 const REGION_COLORS = {
   Eastern: "#2dd47f",
@@ -10,6 +10,7 @@ const REGION_COLORS = {
 export default function StadiumsTab() {
   const [stadiums, setStadiums] = useState(null);
   const [games, setGames] = useState([]);
+  const [weather, setWeather] = useState({});
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -20,10 +21,35 @@ export default function StadiumsTab() {
     return () => { cancelled = true; };
   }, []);
 
+  // Live local weather at each venue (Open-Meteo, refreshed every 15 min)
+  useEffect(() => {
+    if (!stadiums) return;
+    let cancelled = false;
+    let timer = null;
+    async function loadWeather() {
+      const results = await Promise.allSettled(
+        stadiums.map(async s => {
+          const c = stadiumCoords(s);
+          if (!c) return null;
+          const cur = await fetchCurrentWeather(c.lat, c.lon);
+          return cur ? [s.id, cur] : null;
+        })
+      );
+      if (cancelled) return;
+      const m = {};
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value) m[r.value[0]] = r.value[1];
+      }
+      setWeather(m);
+      timer = setTimeout(loadWeather, 15 * 60 * 1000);
+    }
+    loadWeather();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [stadiums]);
+
   const gamesByStadium = useMemo(() => {
     const m = {};
     for (const g of games) {
-      if (!m[g.stadium_id]) m[m[g.stadium_id] = g.stadium_id, g.stadium_id] = [];
       if (!m[g.stadium_id]) m[g.stadium_id] = [];
       m[g.stadium_id].push(g);
     }
@@ -43,6 +69,8 @@ export default function StadiumsTab() {
           const played = sgames.filter(g => g.finished === "TRUE").length;
           const total = sgames.length;
           const regionColor = REGION_COLORS[s.region] || "var(--muted)";
+          const w = weather[s.id];
+          const wi = w ? weatherInfo(w.weather_code) : null;
           return (
             <div key={s.id} className="stadium-card">
               <div className="stadium-top">
@@ -58,6 +86,13 @@ export default function StadiumsTab() {
               <div className="stadium-city">
                 📍 {s.city_en}, {s.country_en}
               </div>
+              {w && wi && (
+                <div className="stadium-weather">
+                  {wi.icon} {Math.round(w.temperature_2m)}°C
+                  {wi.label ? ` · ${wi.label}` : ""}
+                  {typeof w.wind_speed_10m === "number" ? ` · 💨 ${Math.round(w.wind_speed_10m)} km/h` : ""}
+                </div>
+              )}
               {total > 0 && (
                 <div className="stadium-games">
                   <div className="sg-bar">
@@ -70,7 +105,7 @@ export default function StadiumsTab() {
           );
         })}
       </div>
-      <footer>data: worldcup26.ir</footer>
+      <footer>data: worldcup26.ir · weather: Open-Meteo</footer>
     </div>
   );
 }

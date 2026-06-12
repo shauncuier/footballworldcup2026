@@ -1,5 +1,82 @@
 import { useState, useEffect, useMemo } from "react";
-import { fetchAllTeams, fetchAllGames } from "../api.js";
+import { fetchAllTeams, fetchAllGames, findEspnTeamId, fetchEspnRoster } from "../api.js";
+
+const POSITION_ORDER = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+
+function SquadSection({ teamName }) {
+  const [squad, setSquad] = useState(null); // null = loading, [] = unavailable
+  const [coach, setCoach] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSquad(null);
+    setCoach(null);
+    (async () => {
+      try {
+        const espnId = findEspnTeamId(teamName);
+        if (!espnId) {
+          if (!cancelled) setSquad([]);
+          return;
+        }
+        const r = await fetchEspnRoster(espnId);
+        if (!cancelled) {
+          setSquad(r.athletes);
+          setCoach(r.coach);
+        }
+      } catch {
+        if (!cancelled) setSquad([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [teamName]);
+
+  if (squad === null) return <div className="skeleton" style={{ height: 48 }} />;
+  if (!squad.length) return null;
+
+  const groups = POSITION_ORDER
+    .map(pos => ({
+      pos,
+      players: squad
+        .filter(p => p.position && p.position.name === pos)
+        .sort((a, b) => (parseInt(a.jersey) || 99) - (parseInt(b.jersey) || 99)),
+    }))
+    .filter(g => g.players.length);
+  const other = squad.filter(p => !p.position || !POSITION_ORDER.includes(p.position.name));
+
+  return (
+    <div className="squad">
+      <h3 className="modal-section-title">
+        Squad ({squad.length})
+        {coach && <span className="coach-name"> · Coach: {coach}</span>}
+      </h3>
+      {groups.map(g => (
+        <div key={g.pos}>
+          <div className="squad-pos">{g.pos}s</div>
+          <ul className="squad-list">
+            {g.players.map(p => (
+              <li key={p.id}>
+                <span className="jersey">{p.jersey || "–"}</span>
+                <span className="squad-name">{p.displayName}</span>
+                {p.age ? <span className="squad-age">{p.age} yrs</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {other.length > 0 && (
+        <ul className="squad-list">
+          {other.map(p => (
+            <li key={p.id}>
+              <span className="jersey">{p.jersey || "–"}</span>
+              <span className="squad-name">{p.displayName}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="squad-src">squad: ESPN</div>
+    </div>
+  );
+}
 
 function TeamModal({ team, games, teamMap, onClose }) {
   const teamGames = games.filter(
@@ -16,6 +93,7 @@ function TeamModal({ team, games, teamMap, onClose }) {
             <span className="modal-meta">{team.fifa_code} · Group {team.groups}</span>
           </div>
         </div>
+        <h3 className="modal-section-title">Matches</h3>
         <div className="modal-games">
           {teamGames.length === 0 && <p className="state-msg" style={{padding:"16px"}}>No matches found.</p>}
           {teamGames.map(g => {
@@ -34,6 +112,7 @@ function TeamModal({ team, games, teamMap, onClose }) {
             );
           })}
         </div>
+        <SquadSection teamName={team.name_en} />
       </div>
     </div>
   );
@@ -94,7 +173,7 @@ export default function TeamsTab() {
           onClose={() => setSelected(null)}
         />
       )}
-      <footer>data: worldcup26.ir</footer>
+      <footer>data: worldcup26.ir &amp; ESPN</footer>
     </div>
   );
 }
