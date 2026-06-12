@@ -8,9 +8,9 @@ export const WC26_API = 'https://worldcup26.ir/get';
 // Keep old alias so existing components don't break
 export const API = ESPN_API;
 
-export const LIVE_REFRESH_MS   = 15_000;
+export const LIVE_REFRESH_MS   = 5_000;
 export const IDLE_REFRESH_MS   = 60_000;
-export const DETAIL_REFRESH_MS = 30_000;
+export const DETAIL_REFRESH_MS = 10_000;
 
 export const ymd = d =>
   `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
