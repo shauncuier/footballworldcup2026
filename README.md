@@ -1,83 +1,82 @@
-# 🏆 FIFA World Cup 2026 Live Dashboard
+# FIFA World Cup 2026 Live Scores
 
-A high-performance, real-time web application providing live scores, statistics, lineups, group standings, and tournament news for the FIFA World Cup 2026. Built with React and Vite, it delivers instant updates in the background without any page refreshes.
+Real-time web app tracking all 104 matches of the 2026 FIFA World Cup across USA, Canada, and Mexico.
 
-Live demo: **[https://worldcup.3s-soft.net](https://worldcup.3s-soft.net)**
+**Live:** [worldcup.3s-soft.net](https://worldcup.3s-soft.net)
 
----
+## Features
 
-## ✨ Features
+- **Live Scores** — auto-refreshes every 15 s during matches, 60 s otherwise
+- **Full Schedule** — all 104 games with dates, times, venues, and group filter (A-L)
+- **Group Standings** — live tables for all 12 groups, top-2 qualification highlighted
+- **Top Scorers** — leaderboard derived from live match goal data
+- **Teams** — all 48 qualified nations with flags; click for individual schedules
+- **Stadiums** — all 16 venues with capacity and match-load progress bar
+- **News** — latest headlines from ESPN
 
-- **⚡ Real-Time Live Scores**: Automatically refreshes live matches every 15 seconds.
-- **📊 Detailed Match Statistics**: Click on any match card to see interactive dashboards containing:
-  - **Stats**: Possession, total shots, shots on target, corners, saves, passes, fouls, cards, and more.
-  - **Timeline**: Chronological events including goals (with scorer name and minute), cards, substitutions, and half/full-time markers.
-  - **Lineups**: Starting XI (with formation) and substitutes for both teams.
-  - **Commentary**: Live textual commentary updated in real-time.
-  - **Match Info**: Venue details, attendance, match officials, TV broadcast channels, and match odds.
-- **📈 Group Standings**: Displays group stage tables with automatic green highlighting for the top 2 teams qualifying for the knockout rounds. Updates in the background.
-- **📰 News Hub**: Aggregates the latest tournament news and articles with direct links to full reports.
-- **🔄 Zero-Refresh Dynamic Experience**:
-  - All data polls automatically in the background (15s for live scores, 30s for live match details, 60s for standings, news, and inactive matches).
-  - Tabs are cached in memory using CSS visibility toggling, meaning you can switch tabs instantly without losing scroll positions or showing loading skeletons.
+## Tech Stack
 
----
+| Layer | Choice |
+|-------|--------|
+| UI | React 18 + Vite 6 |
+| Styling | Plain CSS (no framework) |
+| Live data | ESPN public API |
+| Schedule / Teams / Venues | worldcup26.ir |
+| Analytics | Google Analytics 4 |
+| Hosting | GitHub Pages + custom domain |
 
-## 🛠️ Tech Stack
+## Data Sources
 
-- **Framework**: [React](https://react.dev/) (v18.3)
-- **Build Tool**: [Vite](https://vite.dev/) (v6.3)
-- **Styling**: Vanilla CSS (Fluid layouts, dark-mode/glassmorphic aesthetic, responsive grid)
-- **Data Source**: ESPN Soccer API (dynamic integration)
-- **Deployment**: GitHub Pages with custom domain support
+- **ESPN** (`site.api.espn.com`) — live scoreboard, match detail, standings, news (no API key)
+- **worldcup26.ir** — complete fixture list, 48 teams, 16 stadiums, group data (no API key)
 
----
+Both APIs support CORS and are free without authentication.
 
-## 🚀 Getting Started
+## Local Development
 
-### Prerequisites
-
-Make sure you have [Node.js](https://nodejs.org/) installed (v18 or higher recommended).
-
-### Installation
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/shauncuier/footballworldcup2026.git
-   cd footballworldcup2026
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Run local development server**:
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:5173` in your browser.
-
-4. **Build for production**:
-   ```bash
-   npm run build
-   ```
-
----
-
-## 📦 Deployment to GitHub Pages
-
-The project is configured for seamless deployment to GitHub Pages using the `gh-pages` package. 
-
-To deploy your changes to the live site, run:
 ```bash
-npm run deploy
+npm install
+npm run dev        # http://localhost:5173
 ```
-This script will build the application and automatically push the output directory (`dist`) to the `gh-pages` branch on GitHub.
 
-### Custom Domain
+Optional: copy `.env.example` to `.env` and set your GA4 measurement ID:
 
-The project is configured to run at **`worldcup.3s-soft.net`**. 
+```
+VITE_GA_ID=G-XXXXXXXXXX
+```
 
-- The custom domain is declared in the CNAME file at `public/CNAME` to ensure it is kept across deployments.
-- In Cloudflare, a CNAME record points `worldcup` to `shauncuier.github.io` (configured as **DNS Only**).
+## Build & Deploy
+
+```bash
+npm run build      # output in dist/
+```
+
+Deployment is automated via GitHub Actions on every push to `main`. The workflow builds the app and publishes `dist/` to GitHub Pages.
+
+## Project Structure
+
+```
+src/
+  api.js                  # All API calls and data helpers
+  analytics.js            # GA4 integration
+  App.jsx                 # 7-tab shell + header/footer
+  index.css               # All styles
+  main.jsx                # Entry point
+  components/
+    MatchesTab.jsx         # Live scores with date navigation
+    MatchCard.jsx          # Individual match card + scorer list
+    MatchDetail.jsx        # Stats, timeline, lineups, commentary
+    ScheduleTab.jsx        # Full 104-game schedule
+    StandingsTab.jsx       # Group tables
+    TopScorersTab.jsx      # Goal leaderboard
+    TeamsTab.jsx           # 48-team grid + modals
+    StadiumsTab.jsx        # 16 venues
+    NewsTab.jsx            # ESPN headlines
+    Shared.jsx             # StatusBadge, TeamSide, skeleton loaders
+```
+
+## Credits
+
+Created by [3s-Soft.com](https://3s-soft.com)
+
+Data provided by ESPN and worldcup26.ir. Not affiliated with FIFA.
