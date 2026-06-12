@@ -1,5 +1,9 @@
+// GA4 measurement ID. Not a secret — safe to ship in the bundle.
+// Override locally with VITE_GA_ID in .env (e.g. for a staging property).
+const DEFAULT_GA_ID = "G-GCSJHWQEDH";
+
 export function initAnalytics() {
-  const id = import.meta.env.VITE_GA_ID;
+  const id = import.meta.env.VITE_GA_ID || DEFAULT_GA_ID;
   if (!id || id === "G-XXXXXXXXXX") return;
   const script = document.createElement("script");
   script.async = true;
