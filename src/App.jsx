@@ -8,9 +8,11 @@ import TopScorersTab from "./components/TopScorersTab.jsx";
 import TeamsTab      from "./components/TeamsTab.jsx";
 import StadiumsTab   from "./components/StadiumsTab.jsx";
 import NewsTab       from "./components/NewsTab.jsx";
+import WatchTab      from "./components/WatchTab.jsx";
 
 const TABS = [
   { id: "matches",  label: "⚽ Matches"    },
+  { id: "watch",    label: "📺 Watch"      },
   { id: "schedule", label: "📅 Schedule"   },
   { id: "groups",   label: "🏆 Groups"     },
   { id: "scorers",  label: "👟 Scorers"    },
@@ -70,6 +72,7 @@ export default function App() {
 
       <main>
         <div style={{ display: tab === "matches"  ? "block" : "none" }}><MatchesTab league={league} onMeta={onMeta} /></div>
+        <div style={{ display: tab === "watch"    ? "block" : "none" }}><WatchTab /></div>
         <div style={{ display: tab === "schedule" ? "block" : "none" }}><ScheduleTab /></div>
         <div style={{ display: tab === "groups"   ? "block" : "none" }}><StandingsTab league={league} /></div>
         <div style={{ display: tab === "scorers"  ? "block" : "none" }}><TopScorersTab /></div>
