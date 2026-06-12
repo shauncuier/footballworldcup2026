@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API, DETAIL_REFRESH_MS, IDLE_REFRESH_MS, fetchJson } from "../api.js";
+import { speak, stopSpeaking, speechSupported } from "../sound.js";
 
 const STAT_LABELS = [
   ["possessionPct", "Possession %"],
@@ -191,6 +192,38 @@ export default function MatchDetail({ eventId, live }) {
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("stats");
+  const [voice, setVoice] = useState(false);
+  const lastSpokenRef = useRef(0);
+
+  // Read newly arrived commentary lines aloud while voice mode is on
+  useEffect(() => {
+    if (!voice || !summary || !summary.commentary) return;
+    const fresh = summary.commentary
+      .filter(c => (c.sequence || 0) > lastSpokenRef.current)
+      .slice(-3);
+    for (const c of fresh) {
+      const t = c.time && c.time.displayValue ? `${c.time.displayValue}. ` : "";
+      speak(t + (c.text || ""));
+      lastSpokenRef.current = Math.max(lastSpokenRef.current, c.sequence || 0);
+    }
+  }, [voice, summary]);
+
+  // Stop talking when the detail panel closes
+  useEffect(() => () => stopSpeaking(), []);
+
+  const toggleVoice = () => {
+    setVoice(v => {
+      if (v) {
+        stopSpeaking();
+        return false;
+      }
+      const items = (summary && summary.commentary) || [];
+      const maxSeq = items.reduce((m, c) => Math.max(m, c.sequence || 0), 0);
+      // Speak the most recent line immediately as confirmation
+      lastSpokenRef.current = Math.max(0, maxSeq - 1);
+      return true;
+    });
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -248,7 +281,18 @@ export default function MatchDetail({ eventId, live }) {
       {tab === "stats" && <StatsPane box={summary.boxscore} />}
       {tab === "timeline" && <TimelinePane keyEvents={summary.keyEvents} />}
       {tab === "lineups" && <LineupsPane rosters={summary.rosters} />}
-      {tab === "commentary" && <CommentaryPane commentary={summary.commentary} />}
+      {tab === "commentary" && (
+        <>
+          {speechSupported && (
+            <div className="voice-bar">
+              <button className={voice ? "voice-btn on" : "voice-btn"} onClick={toggleVoice}>
+                {voice ? "🔊 Voice commentary: ON" : "🔈 Voice commentary: OFF"}
+              </button>
+            </div>
+          )}
+          <CommentaryPane commentary={summary.commentary} />
+        </>
+      )}
       {tab === "info" && <InfoPane summary={summary} />}
     </div>
   );

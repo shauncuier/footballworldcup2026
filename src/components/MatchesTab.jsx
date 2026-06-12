@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { API, LIVE_REFRESH_MS, IDLE_REFRESH_MS, ymd, isToday, fetchJson } from "../api.js";
 import { Skeletons } from "./Shared.jsx";
 import MatchCard from "./MatchCard.jsx";
+import { playGoalHorn, speak, speechSupported } from "../sound.js";
 
 function useScoreboard(viewDate, onMeta) {
   const [events, setEvents] = useState(null); // null = loading
@@ -51,6 +52,41 @@ function useScoreboard(viewDate, onMeta) {
 export default function MatchesTab({ league, onMeta }) {
   const [viewDate, setViewDate] = useState(() => new Date());
   const { events, error, updatedAt } = useScoreboard(viewDate, onMeta);
+  const [goalSound, setGoalSound] = useState(() => {
+    try { return localStorage.getItem("wc26-goal-sound") === "1"; } catch { return false; }
+  });
+  const prevScoresRef = useRef({});
+
+  // Goal alert: horn + spoken score whenever a live match score changes
+  useEffect(() => {
+    if (!events) return;
+    const next = {};
+    for (const e of events) {
+      const comp = e.competitions && e.competitions[0];
+      const home = comp && comp.competitors && comp.competitors.find(c => c.homeAway === "home");
+      const away = comp && comp.competitors && comp.competitors.find(c => c.homeAway === "away");
+      if (!home || !away) continue;
+      const key = `${home.score}-${away.score}`;
+      next[e.id] = key;
+      const prev = prevScoresRef.current[e.id];
+      if (goalSound && prev !== undefined && prev !== key && e.status.type.state === "in") {
+        playGoalHorn();
+        if (speechSupported) {
+          speak(`Goal! ${home.team.displayName} ${home.score}, ${away.team.displayName} ${away.score}.`);
+        }
+      }
+    }
+    prevScoresRef.current = next;
+  }, [events, goalSound]);
+
+  const toggleGoalSound = () => {
+    setGoalSound(v => {
+      const on = !v;
+      try { localStorage.setItem("wc26-goal-sound", on ? "1" : "0"); } catch { /* ignore */ }
+      if (on) playGoalHorn(); // user gesture unlocks audio + audible confirmation
+      return on;
+    });
+  };
 
   const stages =
     (league && league.calendar && league.calendar[0] && league.calendar[0].entries) || [];
@@ -107,6 +143,13 @@ export default function MatchesTab({ league, onMeta }) {
         </button>
         <button className="today-btn" onClick={() => setViewDate(new Date())}>
           Today
+        </button>
+        <button
+          className={goalSound ? "sound-btn on" : "sound-btn"}
+          onClick={toggleGoalSound}
+          title="Play a horn and announce the score when a goal is scored"
+        >
+          {goalSound ? "🔔 Goal alerts ON" : "🔕 Goal alerts OFF"}
         </button>
       </div>
       {events === null && !error && <Skeletons />}

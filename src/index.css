@@ -533,3 +533,22 @@ main { max-width: 960px; width: 100%; }
   padding: 3px 12px;
   background: var(--card);
 }
+
+/* ── sound toggles (goal alerts + voice commentary) ────────── */
+.sound-btn, .voice-btn {
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sound-btn.on, .voice-btn.on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(45, 212, 127, 0.08);
+}
+.voice-bar { margin-bottom: 10px; }
+.voice-btn { padding: 6px 12px; font-size: 0.76rem; }
