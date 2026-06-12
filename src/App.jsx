@@ -15,14 +15,14 @@ const StadiumsTab   = lazy(() => import("./components/StadiumsTab.jsx"));
 const NewsTab       = lazy(() => import("./components/NewsTab.jsx"));
 
 const TABS = [
-  { id: "matches",  label: "⚽ Matches"    },
-  { id: "watch",    label: "📺 Watch"      },
-  { id: "schedule", label: "📅 Schedule"   },
-  { id: "groups",   label: "🏆 Groups"     },
-  { id: "scorers",  label: "👟 Scorers"    },
-  { id: "teams",    label: "👥 Teams"      },
-  { id: "stadiums", label: "🏟️ Stadiums"  },
-  { id: "news",     label: "📰 News"       },
+  { id: "matches",  icon: "⚽",  label: "Matches"  },
+  { id: "watch",    icon: "📺", label: "Watch"    },
+  { id: "schedule", icon: "📅", label: "Schedule" },
+  { id: "groups",   icon: "🏆", label: "Groups"   },
+  { id: "scorers",  icon: "👟", label: "Scorers"  },
+  { id: "teams",    icon: "👥", label: "Teams"    },
+  { id: "stadiums", icon: "🏟️", label: "Stadiums" },
+  { id: "news",     icon: "📰", label: "News"     },
 ];
 
 export default function App() {
@@ -85,7 +85,8 @@ export default function App() {
             className={tab === t.id ? "active" : ""}
             onClick={() => handleTab(t.id)}
           >
-            {t.label}
+            <span className="tab-ico">{t.icon}</span>
+            <span className="tab-lbl">{t.label}</span>
           </button>
         ))}
       </nav>

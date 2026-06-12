@@ -477,12 +477,42 @@ main { max-width: 960px; width: 100%; }
 
 /* allow team names to wrap on narrow screens instead of truncating */
 @media (max-width: 480px) {
-  .team .name { white-space: normal; line-height: 1.2; font-size: 0.88rem; }
+  .team .name { white-space: normal; line-height: 1.2; font-size: 0.82rem; hyphens: auto; }
 }
 
 @media (max-width: 480px) {
   .team { gap: 6px; }
   .team img { width: 28px; height: 28px; }
-  .team .name { overflow-wrap: anywhere; text-overflow: clip; }
+  .team .name { overflow-wrap: break-word; text-overflow: clip; }
   .teams-row { gap: 8px; }
+}
+
+/* ── mobile nav: 4x2 grid, all tabs visible ────────────────── */
+.tabs button { display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
+.tabs .tab-ico { line-height: 1; }
+.tabs .tab-lbl { line-height: 1; }
+
+@media (max-width: 759px) {
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 12px 12px 6px;
+    overflow: visible;
+    white-space: normal;
+  }
+  .tabs button {
+    flex-direction: column;
+    gap: 4px;
+    padding: 9px 4px 7px;
+    border-radius: 12px;
+    width: 100%;
+  }
+  .tabs .tab-ico { font-size: 1.15rem; }
+  .tabs .tab-lbl { font-size: 0.66rem; font-weight: 600; letter-spacing: 0.2px; }
+}
+
+@media (max-width: 360px) {
+  .tabs { gap: 6px; }
+  .tabs .tab-lbl { font-size: 0.62rem; }
 }
