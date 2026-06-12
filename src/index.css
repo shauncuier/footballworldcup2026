@@ -425,3 +425,52 @@ footer .dot { color: var(--accent); }
 .wtw-card ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .wtw-card a { color: var(--accent, #7ab8ff); text-decoration: none; font-size: 0.85rem; }
 .wtw-card a:hover { text-decoration: underline; }
+
+/* ── responsive / layout fixes ─────────────────────────────── */
+html { overflow-x: clip; }
+body { overflow-x: clip; text-rendering: optimizeSpeed; }
+img, video { max-width: 100%; }
+
+/* full-width header band that blends into page bg */
+header { padding: 28px 16px 14px; }
+
+/* center tab bar: scrolls on small screens, centered on wide ones */
+.tabs {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+@media (min-width: 760px) {
+  .tabs { justify-content: center; flex-wrap: wrap; white-space: normal; overflow: visible; }
+}
+
+/* widen content area on large screens */
+main { max-width: 960px; width: 100%; }
+.app-footer { max-width: 960px; margin-left: auto; margin-right: auto; }
+
+/* matches: two columns on wide screens */
+@media (min-width: 900px) {
+  .match-list { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .match-list .match-card { margin-bottom: 0; }
+  .match-list .match-card.open { grid-column: 1 / -1; }
+}
+
+/* small phones */
+@media (max-width: 420px) {
+  header h1 { font-size: 1.25rem; }
+  .stage-label { font-size: 0.72rem; }
+  .tabs button { padding: 6px 11px; font-size: 0.8rem; }
+  .score { font-size: 1.25rem; min-width: 58px; }
+  .datebar .current-date { min-width: 0; }
+  main { padding: 8px 10px 24px; }
+}
+
+/* respect notches / safe areas */
+@supports (padding: env(safe-area-inset-left)) {
+  main, .tabs { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+}
+
+/* reduce motion for accessibility + perf */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

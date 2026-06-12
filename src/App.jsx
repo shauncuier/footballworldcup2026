@@ -1,14 +1,18 @@
-import { useState, useEffect, useCallback } from "react";
+import { lazy, Suspense, useState, useEffect, useCallback } from "react";
 import { ESPN_API, fetchJson } from "./api.js";
 import { trackTab } from "./analytics.js";
-import MatchesTab    from "./components/MatchesTab.jsx";
-import StandingsTab  from "./components/StandingsTab.jsx";
-import ScheduleTab   from "./components/ScheduleTab.jsx";
-import TopScorersTab from "./components/TopScorersTab.jsx";
-import TeamsTab      from "./components/TeamsTab.jsx";
-import StadiumsTab   from "./components/StadiumsTab.jsx";
-import NewsTab       from "./components/NewsTab.jsx";
-import WatchTab      from "./components/WatchTab.jsx";
+import MatchesTab from "./components/MatchesTab.jsx";
+import { Skeletons } from "./components/Shared.jsx";
+
+// Code-split secondary tabs: loaded on first visit, then kept mounted so
+// background polling and scroll positions survive tab switches.
+const WatchTab      = lazy(() => import("./components/WatchTab.jsx"));
+const ScheduleTab   = lazy(() => import("./components/ScheduleTab.jsx"));
+const StandingsTab  = lazy(() => import("./components/StandingsTab.jsx"));
+const TopScorersTab = lazy(() => import("./components/TopScorersTab.jsx"));
+const TeamsTab      = lazy(() => import("./components/TeamsTab.jsx"));
+const StadiumsTab   = lazy(() => import("./components/StadiumsTab.jsx"));
+const NewsTab       = lazy(() => import("./components/NewsTab.jsx"));
 
 const TABS = [
   { id: "matches",  label: "⚽ Matches"    },
@@ -24,6 +28,7 @@ const TABS = [
 export default function App() {
   const [league, setLeague] = useState(null);
   const [tab, setTab] = useState("matches");
+  const [visited, setVisited] = useState(() => new Set(["matches"]));
   const onMeta = useCallback(lg => setLeague(prev => prev || lg), []);
 
   useEffect(() => {
@@ -32,7 +37,11 @@ export default function App() {
       .catch(() => {});
   }, [onMeta]);
 
-  const handleTab = t => { setTab(t); trackTab(t); };
+  const handleTab = t => {
+    setTab(t);
+    setVisited(prev => (prev.has(t) ? prev : new Set(prev).add(t)));
+    trackTab(t);
+  };
 
   const title = league
     ? `${league.name} ${league.season?.year ?? ""}`.trim()
@@ -43,6 +52,17 @@ export default function App() {
   const ds = new Date(now); ds.setHours(0, 0, 0, 0);
   const de = new Date(now); de.setHours(23, 59, 59, 999);
   const stage = stages.find(s => de >= new Date(s.startDate) && ds < new Date(s.endDate));
+
+  const panes = {
+    matches:  <MatchesTab league={league} onMeta={onMeta} />,
+    watch:    <WatchTab />,
+    schedule: <ScheduleTab />,
+    groups:   <StandingsTab league={league} />,
+    scorers:  <TopScorersTab />,
+    teams:    <TeamsTab />,
+    stadiums: <StadiumsTab />,
+    news:     <NewsTab />,
+  };
 
   return (
     <>
@@ -71,14 +91,11 @@ export default function App() {
       </nav>
 
       <main>
-        <div style={{ display: tab === "matches"  ? "block" : "none" }}><MatchesTab league={league} onMeta={onMeta} /></div>
-        <div style={{ display: tab === "watch"    ? "block" : "none" }}><WatchTab /></div>
-        <div style={{ display: tab === "schedule" ? "block" : "none" }}><ScheduleTab /></div>
-        <div style={{ display: tab === "groups"   ? "block" : "none" }}><StandingsTab league={league} /></div>
-        <div style={{ display: tab === "scorers"  ? "block" : "none" }}><TopScorersTab /></div>
-        <div style={{ display: tab === "teams"    ? "block" : "none" }}><TeamsTab /></div>
-        <div style={{ display: tab === "stadiums" ? "block" : "none" }}><StadiumsTab /></div>
-        <div style={{ display: tab === "news"     ? "block" : "none" }}><NewsTab /></div>
+        {TABS.filter(t => visited.has(t.id)).map(t => (
+          <div key={t.id} style={{ display: tab === t.id ? "block" : "none" }}>
+            <Suspense fallback={<Skeletons n={3} />}>{panes[t.id]}</Suspense>
+          </div>
+        ))}
       </main>
 
       <footer className="app-footer">

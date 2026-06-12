@@ -74,8 +74,8 @@ export default function MatchesTab({ league, onMeta }) {
   const liveCount = (events || []).filter(e => e.status.type.state === "in").length;
   useEffect(() => {
     const base = league
-      ? `${league.name} ${league.season ? league.season.year : ""}`.trim()
-      : "Live Scores";
+      ? `${league.name} ${league.season ? league.season.year : ""}`.trim() + " Live Scores, Schedule & Standings"
+      : document.title;
     document.title = liveCount ? `(${liveCount} LIVE) ${base}` : base;
   }, [liveCount, league]);
 
@@ -107,7 +107,11 @@ export default function MatchesTab({ league, onMeta }) {
       {events !== null && events.length === 0 && (
         <div className="state-msg">No matches on this date.</div>
       )}
-      {events !== null && events.map(e => <MatchCard key={e.id} event={e} />)}
+      {events !== null && events.length > 0 && (
+        <div className="match-list">
+          {events.map(e => <MatchCard key={e.id} event={e} />)}
+        </div>
+      )}
       {updatedAt && (
         <footer>
           <span className="dot" style={error ? { color: "var(--live)" } : null}>
