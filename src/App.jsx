@@ -25,10 +25,36 @@ const TABS = [
   { id: "news",     icon: "📰", label: "News"     },
 ];
 
+// Free counter API (abacus.jasoncameron.dev) — counts one visit per
+// browser per day; subsequent loads just read the current total.
+const COUNTER_NS = "worldcup26-3ssoft";
+const COUNTER_KEY = "visitors";
+
+function useVisitorCount() {
+  const [count, setCount] = useState(null);
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let counted = false;
+    try { counted = localStorage.getItem("wc26-visit-date") === today; } catch { /* private mode */ }
+    const action = counted ? "get" : "hit";
+    fetch(`https://abacus.jasoncameron.dev/${action}/${COUNTER_NS}/${COUNTER_KEY}`)
+      .then(r => r.json())
+      .then(d => {
+        if (typeof d.value === "number") {
+          setCount(d.value);
+          try { localStorage.setItem("wc26-visit-date", today); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return count;
+}
+
 export default function App() {
   const [league, setLeague] = useState(null);
   const [tab, setTab] = useState("matches");
   const [visited, setVisited] = useState(() => new Set(["matches"]));
+  const visitors = useVisitorCount();
   const onMeta = useCallback(lg => setLeague(prev => prev || lg), []);
 
   useEffect(() => {
@@ -71,11 +97,18 @@ export default function App() {
         <div className="sub">
           {league ? "Live scores · auto-refreshing" : "Loading tournament…"}
         </div>
-        {stage && (
-          <span className="stage-label">
-            {stage.label}{stage.detail ? ` · ${stage.detail}` : ""}
-          </span>
-        )}
+        <div className="header-badges">
+          {stage && (
+            <span className="stage-label">
+              {stage.label}{stage.detail ? ` · ${stage.detail}` : ""}
+            </span>
+          )}
+          {visitors !== null && (
+            <span className="visitor-chip" title="Total visits">
+              👀 {visitors.toLocaleString()} visitors
+            </span>
+          )}
+        </div>
       </header>
 
       <nav className="tabs">

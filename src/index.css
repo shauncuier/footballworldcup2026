@@ -516,3 +516,20 @@ main { max-width: 960px; width: 100%; }
   .tabs { gap: 6px; }
   .tabs .tab-lbl { font-size: 0.62rem; }
 }
+
+/* ── header badges (stage + visitor counter) ───────────────── */
+.header-badges {
+  display: flex; justify-content: center; align-items: center;
+  gap: 8px; flex-wrap: wrap; margin-top: 10px;
+}
+.header-badges .stage-label { margin-top: 0; }
+.visitor-chip {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 12px;
+  background: var(--card);
+}
