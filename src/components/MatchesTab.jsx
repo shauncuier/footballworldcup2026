@@ -27,13 +27,22 @@ function useScoreboard(viewDate, onMeta) {
     }
     const anyLive = evs.some(e => e.status.type.state === "in");
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(load, anyLive ? LIVE_REFRESH_MS : IDLE_REFRESH_MS);
+    // Slow down while the page is hidden; resume fast on return (see visibilitychange below)
+    const interval = document.hidden ? IDLE_REFRESH_MS : anyLive ? LIVE_REFRESH_MS : IDLE_REFRESH_MS;
+    timerRef.current = setTimeout(load, interval);
   }, [viewDate, onMeta]);
 
   useEffect(() => {
     setEvents(null);
     load();
-    return () => clearTimeout(timerRef.current);
+    const onVisible = () => {
+      if (!document.hidden) load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timerRef.current);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [load]);
 
   return { events, error, updatedAt };

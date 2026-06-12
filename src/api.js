@@ -8,7 +8,7 @@ export const WC26_API = 'https://worldcup26.ir/get';
 // Keep old alias so existing components don't break
 export const API = ESPN_API;
 
-export const LIVE_REFRESH_MS   = 5_000;
+export const LIVE_REFRESH_MS   = 3_000;
 export const IDLE_REFRESH_MS   = 60_000;
 export const DETAIL_REFRESH_MS = 10_000;
 
