@@ -474,3 +474,15 @@ main { max-width: 960px; width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* allow team names to wrap on narrow screens instead of truncating */
+@media (max-width: 480px) {
+  .team .name { white-space: normal; line-height: 1.2; font-size: 0.88rem; }
+}
+
+@media (max-width: 480px) {
+  .team { gap: 6px; }
+  .team img { width: 28px; height: 28px; }
+  .team .name { overflow-wrap: anywhere; text-overflow: clip; }
+  .teams-row { gap: 8px; }
+}
