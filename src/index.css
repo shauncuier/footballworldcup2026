@@ -591,3 +591,16 @@ main { max-width: 960px; width: 100%; }
   color: var(--muted);
   margin: -2px 0 10px;
 }
+
+/* PWA install chip */
+.install-chip {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  padding: 3px 12px;
+  cursor: pointer;
+}
+.install-chip:hover { filter: brightness(1.08); }

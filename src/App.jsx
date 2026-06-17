@@ -50,11 +50,42 @@ function useVisitorCount() {
   return count;
 }
 
+// Capture the PWA install prompt so we can offer an in-app "Install" button.
+function useInstallPrompt() {
+  const [promptEvent, setPromptEvent] = useState(null);
+  useEffect(() => {
+    const onPrompt = e => { e.preventDefault(); setPromptEvent(e); };
+    const onInstalled = () => setPromptEvent(null);
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onPrompt);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  const install = async () => {
+    if (!promptEvent) return;
+    promptEvent.prompt();
+    try { await promptEvent.userChoice; } catch { /* dismissed */ }
+    setPromptEvent(null);
+  };
+  return [promptEvent, install];
+}
+
+const TAB_IDS = ["matches", "watch", "schedule", "groups", "scorers", "teams", "stadiums", "news"];
+
 export default function App() {
   const [league, setLeague] = useState(null);
-  const [tab, setTab] = useState("matches");
-  const [visited, setVisited] = useState(() => new Set(["matches"]));
+  const initialTab = (() => {
+    try {
+      const saved = localStorage.getItem("wc26-tab");
+      return TAB_IDS.includes(saved) ? saved : "matches";
+    } catch { return "matches"; }
+  })();
+  const [tab, setTab] = useState(initialTab);
+  const [visited, setVisited] = useState(() => new Set([initialTab]));
   const visitors = useVisitorCount();
+  const [canInstall, install] = useInstallPrompt();
   const onMeta = useCallback(lg => setLeague(prev => prev || lg), []);
 
   useEffect(() => {
@@ -66,6 +97,7 @@ export default function App() {
   const handleTab = t => {
     setTab(t);
     setVisited(prev => (prev.has(t) ? prev : new Set(prev).add(t)));
+    try { localStorage.setItem("wc26-tab", t); } catch { /* ignore */ }
     trackTab(t);
   };
 
@@ -107,6 +139,11 @@ export default function App() {
             <span className="visitor-chip" title="Total visits">
               👀 {visitors.toLocaleString()} visitors
             </span>
+          )}
+          {canInstall && (
+            <button className="install-chip" onClick={install} title="Install as an app">
+              ⬇ Install app
+            </button>
           )}
         </div>
       </header>

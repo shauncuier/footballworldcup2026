@@ -121,6 +121,37 @@ export async function fetchWC26Groups() {
   return d.groups || [];
 }
 
+// Real top scorers, aggregated from ESPN scoreboard goal events across the
+// whole tournament in a single call. Consistent with the live Matches tab
+// (the old worldcup26.ir version showed a different, projected bracket).
+export async function fetchTopScorers() {
+  const data = await fetchJson(`${ESPN_API}/scoreboard?dates=20260611-20260719&limit=300`);
+  const teamById = {};
+  const scorers = {};
+  for (const e of (data.events || [])) {
+    const comp = e.competitions && e.competitions[0];
+    if (!comp) continue;
+    for (const c of (comp.competitors || [])) {
+      if (c.team) teamById[c.team.id] = { name: c.team.displayName, logo: c.team.logo };
+    }
+    for (const d of (comp.details || [])) {
+      if (!d.scoringPlay) continue;
+      // Exclude own goals and penalty-shootout goals from a scorer's tally.
+      if (d.ownGoal || d.shootout) continue;
+      const a = d.athletesInvolved && d.athletesInvolved[0];
+      if (!a) continue;
+      const id = a.id || a.displayName;
+      if (!scorers[id]) scorers[id] = { name: a.displayName, goals: 0, teamId: d.team && d.team.id, minutes: [] };
+      scorers[id].goals += 1;
+      const min = d.clock && d.clock.displayValue;
+      if (min) scorers[id].minutes.push(min);
+    }
+  }
+  return Object.values(scorers)
+    .map(s => ({ name: s.name, goals: s.goals, minutes: s.minutes, team: teamById[s.teamId] || null }))
+    .sort((a, b) => b.goals - a.goals || a.name.localeCompare(b.name));
+}
+
 // worldcup26.ir scorer strings use Unicode smart-quotes (U+201C/U+201D), not ASCII.
 // Strip them by char-code to avoid embedding non-ASCII chars in source.
 function stripSmartQuotes(s) {
