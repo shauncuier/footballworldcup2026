@@ -21,7 +21,7 @@ function useScoreboard(bdDate, onMeta) {
     const requested = bdDate;
     let evs = [];
     try {
-      const data = await fetchScoreboardByBdDate(bdDate);
+      const data = await fetchScoreboardByBdDate(bdDate, bdDate === bdDateStr());
       if (requested !== bdDate) return;
       if (data.leagues && data.leagues[0]) onMeta(data.leagues[0]);
       evs = (data.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));

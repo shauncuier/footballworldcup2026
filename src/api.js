@@ -65,13 +65,19 @@ export function shiftBdDate(bdStr, n) {
 const compactYmd = s => s.replace(/-/g, '');
 
 // Fetch ESPN scoreboard for a Bangladesh calendar date. A BD day spans two US
-// calendar dates, so query the US range [bd-1 .. bd] and keep only events whose
+// calendar dates, so query the US range [bd-1 .. bd+1] and keep events whose
 // BD date matches the requested day. Fixes matches landing on the wrong day.
-export async function fetchScoreboardByBdDate(bdStr) {
+// When `includeLive` is set (the "today" view), also keep any currently-live
+// match even if it kicked off the previous BD evening and runs past midnight.
+export async function fetchScoreboardByBdDate(bdStr, includeLive = false) {
   const us0 = compactYmd(shiftBdDate(bdStr, -1));
-  const us1 = compactYmd(bdStr);
+  const us1 = compactYmd(shiftBdDate(bdStr, 1));
   const data = await fetchJson(`${ESPN_API}/scoreboard?dates=${us0}-${us1}`);
-  const events = (data.events || []).filter(e => bdDateStr(e.date) === bdStr);
+  const events = (data.events || []).filter(e => {
+    if (bdDateStr(e.date) === bdStr) return true;
+    if (includeLive && e.status && e.status.type && e.status.type.state === 'in') return true;
+    return false;
+  });
   return { events, leagues: data.leagues };
 }
 
