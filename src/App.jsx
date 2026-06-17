@@ -1,7 +1,8 @@
-import { lazy, Suspense, useState, useEffect, useCallback } from "react";
-import { ESPN_API, fetchJson } from "./api.js";
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { ESPN_API, fetchJson, fetchLiveMatches, LIVE_REFRESH_MS, IDLE_REFRESH_MS } from "./api.js";
 import { trackTab } from "./analytics.js";
 import MatchesTab from "./components/MatchesTab.jsx";
+import LiveTab from "./components/LiveTab.jsx";
 import { Skeletons } from "./components/Shared.jsx";
 
 // Code-split secondary tabs: loaded on first visit, then kept mounted so
@@ -14,6 +15,7 @@ const TeamsTab      = lazy(() => import("./components/TeamsTab.jsx"));
 const StadiumsTab   = lazy(() => import("./components/StadiumsTab.jsx"));
 const NewsTab       = lazy(() => import("./components/NewsTab.jsx"));
 
+// The "live" tab is injected dynamically (only while matches are in progress).
 const TABS = [
   { id: "matches",  icon: "⚽",  label: "Matches"  },
   { id: "watch",    icon: "📺", label: "Watch"    },
@@ -24,6 +26,36 @@ const TABS = [
   { id: "stadiums", icon: "🏟️", label: "Stadiums" },
   { id: "news",     icon: "📰", label: "News"     },
 ];
+
+// Poll currently-live matches. Fast cadence when something is live, slower
+// otherwise (just watching for the next kickoff); backs off while hidden.
+function useLiveMatches() {
+  const [live, setLive] = useState([]);
+  const timerRef = useRef(null);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      let any = false;
+      try {
+        const events = await fetchLiveMatches();
+        if (!cancelled) { setLive(events); any = events.length > 0; }
+      } catch { /* keep last known */ }
+      if (!cancelled) {
+        const interval = document.hidden ? IDLE_REFRESH_MS : any ? LIVE_REFRESH_MS : IDLE_REFRESH_MS;
+        timerRef.current = setTimeout(load, interval);
+      }
+    }
+    load();
+    const onVisible = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      clearTimeout(timerRef.current);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+  return live;
+}
 
 // Free counter API (abacus.jasoncameron.dev) — counts one visit per
 // browser per day; subsequent loads just read the current total.
@@ -86,6 +118,8 @@ export default function App() {
   const [visited, setVisited] = useState(() => new Set([initialTab]));
   const visitors = useVisitorCount();
   const [canInstall, install] = useInstallPrompt();
+  const liveEvents = useLiveMatches();
+  const liveCount = liveEvents.length;
   const onMeta = useCallback(lg => setLeague(prev => prev || lg), []);
 
   useEffect(() => {
@@ -93,6 +127,16 @@ export default function App() {
       .then(d => { if (d.leagues?.[0]) onMeta(d.leagues[0]); })
       .catch(() => {});
   }, [onMeta]);
+
+  // If the user is on the Live tab and the last live match ends, fall back.
+  useEffect(() => {
+    if (tab === "live" && liveCount === 0) setTab("matches");
+  }, [tab, liveCount]);
+
+  // Tab list with the Live tab prepended only while matches are in progress.
+  const tabs = liveCount > 0
+    ? [{ id: "live", icon: "🔴", label: "Live" }, ...TABS]
+    : TABS;
 
   const handleTab = t => {
     setTab(t);
@@ -112,6 +156,7 @@ export default function App() {
   const stage = stages.find(s => de >= new Date(s.startDate) && ds < new Date(s.endDate));
 
   const panes = {
+    live:     <LiveTab liveEvents={liveEvents} />,
     matches:  <MatchesTab league={league} onMeta={onMeta} />,
     watch:    <WatchTab />,
     schedule: <ScheduleTab />,
@@ -149,19 +194,29 @@ export default function App() {
       </header>
 
       <nav className="tabs">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            className={tab === t.id ? "active" : ""}
-            onClick={() => handleTab(t.id)}
-          >
-            <span className="tab-ico">{t.icon}</span>
-            <span className="tab-lbl">{t.label}</span>
-          </button>
-        ))}
+        {tabs.map(t => {
+          const isLive = t.id === "live";
+          return (
+            <button
+              key={t.id}
+              className={`${tab === t.id ? "active" : ""}${isLive ? " live-tab" : ""}`}
+              onClick={() => handleTab(t.id)}
+            >
+              <span className="tab-ico">{t.icon}</span>
+              <span className="tab-lbl">
+                {t.label}{isLive ? ` ${liveCount}` : ""}
+              </span>
+            </button>
+          );
+        })}
       </nav>
 
       <main>
+        {liveCount > 0 && (
+          <div style={{ display: tab === "live" ? "block" : "none" }}>
+            {panes.live}
+          </div>
+        )}
         {TABS.filter(t => visited.has(t.id)).map(t => (
           <div key={t.id} style={{ display: tab === t.id ? "block" : "none" }}>
             <Suspense fallback={<Skeletons n={3} />}>{panes[t.id]}</Suspense>

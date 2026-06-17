@@ -121,6 +121,18 @@ export async function fetchWC26Groups() {
   return d.groups || [];
 }
 
+// Currently in-progress matches, regardless of which BD day they kicked off
+// (covers games running past midnight). Used by the auto-appearing Live tab.
+export async function fetchLiveMatches() {
+  const today = bdDateStr();
+  const us0 = compactYmd(shiftBdDate(today, -1));
+  const us1 = compactYmd(shiftBdDate(today, 1));
+  const data = await fetchJson(`${ESPN_API}/scoreboard?dates=${us0}-${us1}&limit=60`);
+  return (data.events || [])
+    .filter(e => e.status && e.status.type && e.status.type.state === "in")
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
 // Real top scorers, aggregated from ESPN scoreboard goal events across the
 // whole tournament in a single call. Consistent with the live Matches tab
 // (the old worldcup26.ir version showed a different, projected bracket).

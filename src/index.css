@@ -604,3 +604,26 @@ main { max-width: 960px; width: 100%; }
   cursor: pointer;
 }
 .install-chip:hover { filter: brightness(1.08); }
+
+/* auto-appearing Live tab */
+.tabs button.live-tab {
+  border-color: var(--live);
+  color: var(--live);
+}
+.tabs button.live-tab.active {
+  background: var(--live);
+  color: #fff;
+  border-color: var(--live);
+}
+.tabs button.live-tab .tab-ico { animation: pulse 1.4s ease-in-out infinite; }
+
+.live-banner {
+  background: linear-gradient(90deg, rgba(255,77,94,0.18), rgba(255,77,94,0.05));
+  border: 1px solid rgba(255,77,94,0.45);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+  text-align: center;
+}
