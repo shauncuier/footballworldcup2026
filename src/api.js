@@ -40,6 +40,41 @@ export const fmtDateTimeBD = input =>
     timeZone: BD_TZ, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
   }) + ' BD';
 
+// Bangladesh calendar date 'YYYY-MM-DD' for an instant (default: now).
+export function bdDateStr(input = new Date()) {
+  return new Date(input).toLocaleDateString('en-CA', { timeZone: BD_TZ });
+}
+
+// Long BD date label, e.g. "Wednesday, 17 June 2026".
+export const fmtBdDateLabel = bdStr => {
+  const [y, m, d] = bdStr.split('-').map(Number);
+  // noon UTC keeps the date stable across any tz formatting
+  return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-GB', {
+    timeZone: 'UTC', weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  });
+};
+
+// Shift a 'YYYY-MM-DD' string by n days, returning 'YYYY-MM-DD'.
+export function shiftBdDate(bdStr, n) {
+  const [y, m, d] = bdStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + n);
+  return dt.toISOString().slice(0, 10);
+}
+
+const compactYmd = s => s.replace(/-/g, '');
+
+// Fetch ESPN scoreboard for a Bangladesh calendar date. A BD day spans two US
+// calendar dates, so query the US range [bd-1 .. bd] and keep only events whose
+// BD date matches the requested day. Fixes matches landing on the wrong day.
+export async function fetchScoreboardByBdDate(bdStr) {
+  const us0 = compactYmd(shiftBdDate(bdStr, -1));
+  const us1 = compactYmd(bdStr);
+  const data = await fetchJson(`${ESPN_API}/scoreboard?dates=${us0}-${us1}`);
+  const events = (data.events || []).filter(e => bdDateStr(e.date) === bdStr);
+  return { events, leagues: data.leagues };
+}
+
 export async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

@@ -1,22 +1,28 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { API, LIVE_REFRESH_MS, IDLE_REFRESH_MS, ymd, isToday, fetchJson, fmtTimeBD } from "../api.js";
+import {
+  LIVE_REFRESH_MS, IDLE_REFRESH_MS, fmtTimeBD,
+  bdDateStr, fmtBdDateLabel, shiftBdDate, fetchScoreboardByBdDate,
+} from "../api.js";
 import { Skeletons } from "./Shared.jsx";
 import MatchCard from "./MatchCard.jsx";
 import { playGoalHorn, speak, speechSupported } from "../sound.js";
 
-function useScoreboard(viewDate, onMeta) {
+// Tournament bounds in Bangladesh dates (kickoffs run 11 June – 19 July 2026).
+const FIRST_BD_DATE = "2026-06-11";
+const LAST_BD_DATE = "2026-07-19";
+
+function useScoreboard(bdDate, onMeta) {
   const [events, setEvents] = useState(null); // null = loading
   const [error, setError] = useState(null);
   const [updatedAt, setUpdatedAt] = useState(null);
   const timerRef = useRef(null);
 
   const load = useCallback(async () => {
-    const requested = ymd(viewDate);
-    const url = isToday(viewDate) ? `${API}/scoreboard` : `${API}/scoreboard?dates=${requested}`;
+    const requested = bdDate;
     let evs = [];
     try {
-      const data = await fetchJson(url);
-      if (requested !== ymd(viewDate)) return;
+      const data = await fetchScoreboardByBdDate(bdDate);
+      if (requested !== bdDate) return;
       if (data.leagues && data.leagues[0]) onMeta(data.leagues[0]);
       evs = (data.events || []).slice().sort((a, b) => new Date(a.date) - new Date(b.date));
       setEvents(evs);
@@ -28,17 +34,15 @@ function useScoreboard(viewDate, onMeta) {
     }
     const anyLive = evs.some(e => e.status.type.state === "in");
     clearTimeout(timerRef.current);
-    // Slow down while the page is hidden; resume fast on return (see visibilitychange below)
+    // Only poll fast when something is live; idle otherwise; slow while hidden.
     const interval = document.hidden ? IDLE_REFRESH_MS : anyLive ? LIVE_REFRESH_MS : IDLE_REFRESH_MS;
     timerRef.current = setTimeout(load, interval);
-  }, [viewDate, onMeta]);
+  }, [bdDate, onMeta]);
 
   useEffect(() => {
     setEvents(null);
     load();
-    const onVisible = () => {
-      if (!document.hidden) load();
-    };
+    const onVisible = () => { if (!document.hidden) load(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearTimeout(timerRef.current);
@@ -50,8 +54,14 @@ function useScoreboard(viewDate, onMeta) {
 }
 
 export default function MatchesTab({ league, onMeta }) {
-  const [viewDate, setViewDate] = useState(() => new Date());
-  const { events, error, updatedAt } = useScoreboard(viewDate, onMeta);
+  const [bdDate, setBdDate] = useState(() => {
+    const today = bdDateStr();
+    // Clamp the initial day into the tournament window.
+    if (today < FIRST_BD_DATE) return FIRST_BD_DATE;
+    if (today > LAST_BD_DATE) return LAST_BD_DATE;
+    return today;
+  });
+  const { events, error, updatedAt } = useScoreboard(bdDate, onMeta);
   const [goalSound, setGoalSound] = useState(() => {
     try { return localStorage.getItem("wc26-goal-sound") === "1"; } catch { return false; }
   });
@@ -88,33 +98,10 @@ export default function MatchesTab({ league, onMeta }) {
     });
   };
 
-  const stages =
-    (league && league.calendar && league.calendar[0] && league.calendar[0].entries) || [];
-  const bounds = stages.length
-    ? { start: new Date(stages[0].startDate), end: new Date(stages[stages.length - 1].startDate) }
-    : null;
-
-  const shift = days => {
-    const d = new Date(viewDate);
-    d.setDate(d.getDate() + days);
-    setViewDate(d);
-  };
-  const prevDisabled = bounds
-    ? (() => {
-        const p = new Date(viewDate);
-        p.setDate(p.getDate() - 1);
-        p.setHours(23, 59, 59, 999);
-        return p < bounds.start;
-      })()
-    : false;
-  const nextDisabled = bounds
-    ? (() => {
-        const n = new Date(viewDate);
-        n.setDate(n.getDate() + 1);
-        n.setHours(0, 0, 0, 0);
-        return n > bounds.end;
-      })()
-    : false;
+  const todayBd = bdDateStr();
+  const prevDisabled = bdDate <= FIRST_BD_DATE;
+  const nextDisabled = bdDate >= LAST_BD_DATE;
+  const shift = n => setBdDate(d => shiftBdDate(d, n));
 
   const liveCount = (events || []).filter(e => e.status.type.state === "in").length;
   useEffect(() => {
@@ -130,18 +117,14 @@ export default function MatchesTab({ league, onMeta }) {
         <button onClick={() => shift(-1)} disabled={prevDisabled}>
           ← Prev
         </button>
-        <div className="current-date">
-          {viewDate.toLocaleDateString([], {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })}
-        </div>
+        <div className="current-date">{fmtBdDateLabel(bdDate)}</div>
         <button onClick={() => shift(1)} disabled={nextDisabled}>
           Next →
         </button>
-        <button className="today-btn" onClick={() => setViewDate(new Date())}>
+        <button
+          className="today-btn"
+          onClick={() => setBdDate(todayBd < FIRST_BD_DATE ? FIRST_BD_DATE : todayBd > LAST_BD_DATE ? LAST_BD_DATE : todayBd)}
+        >
           Today
         </button>
         <button
@@ -152,6 +135,7 @@ export default function MatchesTab({ league, onMeta }) {
           {goalSound ? "🔔 Goal alerts ON" : "🔕 Goal alerts OFF"}
         </button>
       </div>
+      <div className="datebar-tz">All times shown in Bangladesh time (BD · UTC+6)</div>
       {events === null && !error && <Skeletons />}
       {error && events === null && (
         <div className="state-msg">Could not load scores ({error}). Retrying automatically…</div>

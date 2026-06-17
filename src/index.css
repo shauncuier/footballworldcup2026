@@ -583,3 +583,11 @@ main { max-width: 960px; width: 100%; }
   border: 1px solid rgba(74, 144, 217, 0.3);
   border-radius: 8px; padding: 5px 10px; display: inline-block;
 }
+
+/* timezone note under date/filter bars */
+.datebar-tz {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: -2px 0 10px;
+}

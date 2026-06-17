@@ -6,6 +6,13 @@ import { initAnalytics } from "./analytics.js";
 
 initAnalytics();
 
+// Register the PWA service worker (production only; dev would cache stale HMR).
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {});
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />
