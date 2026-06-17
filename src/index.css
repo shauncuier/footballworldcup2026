@@ -627,3 +627,7 @@ main { max-width: 960px; width: 100%; }
   margin-bottom: 14px;
   text-align: center;
 }
+
+/* schedule: finished/live score emphasis + winner */
+.sched-score.has-score { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+.sched-team .sched-winner { color: var(--accent); font-weight: 700; }

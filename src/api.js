@@ -133,6 +133,32 @@ export async function fetchLiveMatches() {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 
+// Live/final results for every fixture, keyed by ESPN event id, in one call.
+// Lets the (instant, bundled) schedule show scores for finished/in-play games
+// without losing its zero-wait first render.
+export async function fetchScheduleResults() {
+  const data = await fetchJson(`${ESPN_API}/scoreboard?dates=20260611-20260719&limit=300`);
+  const map = {};
+  for (const e of (data.events || [])) {
+    const comp = e.competitions && e.competitions[0];
+    if (!comp) continue;
+    const cs = comp.competitors || [];
+    const home = cs.find(c => c.homeAway === "home") || cs[0] || {};
+    const away = cs.find(c => c.homeAway === "away") || cs[1] || {};
+    const st = (e.status && e.status.type) || {};
+    map[e.id] = {
+      state: st.state,                       // pre | in | post
+      detail: st.shortDetail || st.detail,   // e.g. "FT", "HT", "63'"
+      clock: e.status && e.status.displayClock,
+      home: home.score,
+      away: away.score,
+      homeWinner: !!home.winner,
+      awayWinner: !!away.winner,
+    };
+  }
+  return map;
+}
+
 // Real top scorers, aggregated from ESPN scoreboard goal events across the
 // whole tournament in a single call. Consistent with the live Matches tab
 // (the old worldcup26.ir version showed a different, projected bracket).
