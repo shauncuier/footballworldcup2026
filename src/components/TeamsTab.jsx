@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { fetchAllTeams, fetchAllGames, findEspnTeamId, fetchEspnRoster } from "../api.js";
+import { fetchAllTeams, fetchAllGames, findEspnTeamId, fetchEspnRoster, parseWC26GameDate, fmtDateTimeBD } from "../api.js";
 
 const POSITION_ORDER = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
 
@@ -107,7 +107,7 @@ function TeamModal({ team, games, teamMap, onClose }) {
                   <strong> {done ? `${g.home_score}–${g.away_score}` : "vs"} </strong>
                   {away?.name_en || g.away_team_name_en}
                 </span>
-                <span className="mg-info">MD{g.matchday} · {done ? "FT" : g.local_date}</span>
+                <span className="mg-info">MD{g.matchday} · {done ? "FT" : (() => { const d = parseWC26GameDate(g); return d ? fmtDateTimeBD(d) : g.local_date; })()}</span>
               </div>
             );
           })}

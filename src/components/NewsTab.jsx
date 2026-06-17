@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { API, IDLE_REFRESH_MS, fetchJson } from "../api.js";
+import { API, IDLE_REFRESH_MS, fetchJson, fmtDateTimeBD } from "../api.js";
 import { Skeletons } from "./Shared.jsx";
 
 export default function NewsTab() {
@@ -50,7 +50,7 @@ export default function NewsTab() {
               <h3>{a.headline}</h3>
               <p>{a.description}</p>
               <div className="news-meta">
-                {a.published && new Date(a.published).toLocaleString()}{" "}
+                {a.published && fmtDateTimeBD(a.published)}{" "}
                 {link && (
                   <>
                     ·{" "}

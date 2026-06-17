@@ -12,13 +12,33 @@ export const LIVE_REFRESH_MS   = 3_000;
 export const IDLE_REFRESH_MS   = 60_000;
 export const DETAIL_REFRESH_MS = 10_000;
 
+// All match times are shown in Bangladesh time (UTC+6, no DST) so they are
+// identical for every visitor regardless of their device's timezone.
+export const BD_TZ = 'Asia/Dhaka';
+
 export const ymd = d =>
   `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
 
 export const isToday = d => ymd(d) === ymd(new Date());
 
-export const fmtKickoff = iso =>
-  new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+// Format a true instant (ISO string, ms, or Date) in Bangladesh time.
+export const fmtKickoff = input =>
+  new Date(input).toLocaleTimeString('en-GB', {
+    timeZone: BD_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+
+export const fmtTimeBD = input =>
+  new Date(input).toLocaleTimeString('en-GB', {
+    timeZone: BD_TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+
+export const fmtDateBD = (input, opts = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) =>
+  new Date(input).toLocaleDateString('en-GB', { timeZone: BD_TZ, ...opts });
+
+export const fmtDateTimeBD = input =>
+  new Date(input).toLocaleString('en-GB', {
+    timeZone: BD_TZ, day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false,
+  }) + ' BD';
 
 export async function fetchJson(url) {
   const res = await fetch(url);
@@ -26,23 +46,37 @@ export async function fetchJson(url) {
   return res.json();
 }
 
+// worldcup26.ir is occasionally slow/unstable; retry a few times with backoff.
+async function fetchJsonRetry(url, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fetchJson(url);
+    } catch (e) {
+      lastErr = e;
+      if (i < tries - 1) await new Promise(r => setTimeout(r, 1200 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function fetchAllGames() {
-  const d = await fetchJson(`${WC26_API}/games`);
+  const d = await fetchJsonRetry(`${WC26_API}/games`);
   return d.games || [];
 }
 
 export async function fetchAllTeams() {
-  const d = await fetchJson(`${WC26_API}/teams`);
+  const d = await fetchJsonRetry(`${WC26_API}/teams`);
   return d.teams || [];
 }
 
 export async function fetchAllStadiums() {
-  const d = await fetchJson(`${WC26_API}/stadiums`);
+  const d = await fetchJsonRetry(`${WC26_API}/stadiums`);
   return d.stadiums || [];
 }
 
 export async function fetchWC26Groups() {
-  const d = await fetchJson(`${WC26_API}/groups`);
+  const d = await fetchJsonRetry(`${WC26_API}/groups`);
   return d.groups || [];
 }
 
@@ -72,14 +106,66 @@ export function parseScorerEntry(entry) {
   return { name: clean, minute: '' };
 }
 
-// Parse worldcup26 date "MM/DD/YYYY HH:mm" -> Date (treat as US Eastern)
-export function parseWC26Date(str) {
+// IANA timezone for each worldcup26 stadium id (1-16). Each venue sits in a
+// different North-American zone, so the local_date wall-clock must be read in
+// the correct zone before converting to Bangladesh time.
+const STADIUM_TZ_BY_ID = {
+  '1':  'America/Mexico_City',   // Estadio Azteca, Mexico City
+  '2':  'America/Mexico_City',   // Estadio Akron, Guadalajara
+  '3':  'America/Monterrey',     // Estadio BBVA, Monterrey
+  '4':  'America/Chicago',       // AT&T Stadium, Dallas
+  '5':  'America/Chicago',       // NRG Stadium, Houston
+  '6':  'America/Chicago',       // Arrowhead, Kansas City
+  '7':  'America/New_York',      // Mercedes-Benz, Atlanta
+  '8':  'America/New_York',      // Hard Rock, Miami
+  '9':  'America/New_York',      // Gillette, Boston
+  '10': 'America/New_York',      // Lincoln Financial, Philadelphia
+  '11': 'America/New_York',      // MetLife, New York/New Jersey
+  '12': 'America/Toronto',       // BMO Field, Toronto
+  '13': 'America/Vancouver',     // BC Place, Vancouver
+  '14': 'America/Los_Angeles',   // Lumen Field, Seattle
+  '15': 'America/Los_Angeles',   // Levi's, Santa Clara
+  '16': 'America/Los_Angeles',   // SoFi, Los Angeles
+};
+
+// Offset (minutes) of an IANA timezone at a given instant — positive means
+// the zone is ahead of UTC.
+function tzOffsetMinutes(date, timeZone) {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+  const p = {};
+  for (const part of dtf.formatToParts(date)) p[part.type] = part.value;
+  const hour = p.hour === '24' ? '00' : p.hour;
+  const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +hour, +p.minute, +p.second);
+  return (asUTC - date.getTime()) / 60000;
+}
+
+// Interpret wall-clock components as local time in `timeZone`, return the true
+// UTC instant. Two-pass to settle DST transitions.
+function wallTimeToInstant(y, mo, d, h, mi, timeZone) {
+  const utcGuess = Date.UTC(y, mo - 1, d, h, mi);
+  let off = tzOffsetMinutes(new Date(utcGuess), timeZone);
+  let result = new Date(utcGuess - off * 60000);
+  off = tzOffsetMinutes(result, timeZone);
+  result = new Date(utcGuess - off * 60000);
+  return result;
+}
+
+// Parse a worldcup26 game's "MM/DD/YYYY HH:mm" venue-local date into a true
+// instant, using the stadium's timezone. Returns a Date (or null).
+export function parseWC26GameDate(game) {
+  const str = game && game.local_date;
   if (!str) return null;
   const [datePart, timePart] = str.split(' ');
   if (!datePart) return null;
-  const [mm, dd, yyyy] = datePart.split('/');
-  const time = timePart || '00:00';
-  return new Date(`${yyyy}-${mm}-${dd}T${time}:00-04:00`);
+  const [mm, dd, yyyy] = datePart.split('/').map(Number);
+  const [h, mi] = (timePart || '00:00').split(':').map(Number);
+  if (!yyyy || !mm || !dd) return null;
+  const tz = STADIUM_TZ_BY_ID[String(game.stadium_id)] || 'America/New_York';
+  return wallTimeToInstant(yyyy, mm, dd, h, mi, tz);
 }
 
 // Derive top-scorers list from all games

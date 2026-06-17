@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { fetchAllGames, fetchAllTeams, parseScorers, parseWC26Date } from "../api.js";
+import { fetchAllGames, fetchAllTeams, parseScorers, parseWC26GameDate, fmtTimeBD, fmtDateBD } from "../api.js";
 
 const STATUS_COLOR = {
   finished: "var(--accent)",
@@ -32,9 +32,10 @@ function GameRow({ game, teamMap, stadiumMap }) {
         <div className="sched-score">
           {isFinished || isLive
             ? `${game.home_score} – ${game.away_score}`
-            : parseWC26Date(game.local_date)
-              ? parseWC26Date(game.local_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : game.local_date}
+            : (() => {
+                const d = parseWC26GameDate(game);
+                return d ? `${fmtTimeBD(d)} BD` : game.local_date;
+              })()}
         </div>
         <div className="sched-team away">
           <span>{away.name_en}</span>
@@ -81,8 +82,8 @@ export default function ScheduleTab() {
     if (!games) return [];
     const list = filter === "ALL" ? games : games.filter(g => g.group === filter);
     return list.slice().sort((a, b) => {
-      const da = parseWC26Date(a.local_date);
-      const db = parseWC26Date(b.local_date);
+      const da = parseWC26GameDate(a);
+      const db = parseWC26GameDate(b);
       return (da || 0) - (db || 0);
     });
   }, [games, filter]);
@@ -90,8 +91,8 @@ export default function ScheduleTab() {
   const byDate = useMemo(() => {
     const map = {};
     for (const g of filtered) {
-      const d = parseWC26Date(g.local_date);
-      const key = d ? d.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : g.local_date;
+      const d = parseWC26GameDate(g);
+      const key = d ? fmtDateBD(d) : g.local_date;
       if (!map[key]) map[key] = [];
       map[key].push(g);
     }

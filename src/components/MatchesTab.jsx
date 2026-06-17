@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { API, LIVE_REFRESH_MS, IDLE_REFRESH_MS, ymd, isToday, fetchJson } from "../api.js";
+import { API, LIVE_REFRESH_MS, IDLE_REFRESH_MS, ymd, isToday, fetchJson, fmtTimeBD } from "../api.js";
 import { Skeletons } from "./Shared.jsx";
 import MatchCard from "./MatchCard.jsx";
 import { playGoalHorn, speak, speechSupported } from "../sound.js";
@@ -170,8 +170,8 @@ export default function MatchesTab({ league, onMeta }) {
             ●
           </span>{" "}
           {error
-            ? `Update failed ${updatedAt.toLocaleTimeString()} — retrying`
-            : `Updated ${updatedAt.toLocaleTimeString()} · data: ESPN`}
+            ? `Update failed ${fmtTimeBD(updatedAt)} BD — retrying`
+            : `Updated ${fmtTimeBD(updatedAt)} BD · data: ESPN`}
         </footer>
       )}
     </>
